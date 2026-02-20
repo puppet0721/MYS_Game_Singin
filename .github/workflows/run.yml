@@ -2,8 +2,8 @@ name: MiHoYo Sign-In Script
 
 on:
   schedule:
-    - cron: '20 23 * * *' # 每天UTC 23:20, 对应北京时间7:20，实际运行时间有偏差。
-  workflow_dispatch: # 允许手动触发
+    - cron: '20 23 * * *'
+  workflow_dispatch:
 
 jobs:
   build-and-run:
@@ -22,8 +22,24 @@ jobs:
       run: npm install
 
     - name: Run main.js
+      id: run_script
       env:
         MYS_COOKIES: ${{ secrets.MYS_COOKIES }}
         GENSHIN_TOKENS: ${{ secrets.GENSHIN_TOKENS }}
         STARRAIL_TOKENS: ${{ secrets.STARRAIL_TOKENS }}
       run: node main.js
+
+    # ===== Server酱通知 =====
+    - name: Notify Server酱
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          STATUS="✅ 米游社签到成功"
+        else
+          STATUS="❌ 米游社签到失败"
+        fi
+
+        curl -X POST "https://sctapi.ftqq.com/${{ secrets.SERVERCHAN_KEY }}.send" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "title=GitHub Actions 签到通知" \
+        -d "desp=${STATUS}%0A仓库：${{ github.repository }}%0A触发方式：${{ github.event_name }}%0A日志：https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
